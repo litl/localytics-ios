@@ -22,7 +22,7 @@
 
 #pragma mark Constants
 #define PREFERENCES_KEY             @"_localytics_install_id" // The randomly generated ID for each install of the app
-#define CLIENT_VERSION              @"iOS_2.11"      // The version of this library
+#define CLIENT_VERSION              @"iOS_2.12"      // The version of this library
 #define LOCALYTICS_DIR              @".localytics"	// The directory in which the Localytics database is stored
 #define IFT_ETHER                   0x6             // Ethernet CSMACD
 #define PATH_TO_APT                 @"/private/var/lib/apt/"
@@ -200,44 +200,48 @@ CLLocationCoordinate2D lastDeviceLocation = {0};
     });
 }
 
+
 - (BOOL)resume {
-    BOOL resumed = NO;
-
+	__block BOOL resumed = NO;
+	
+	dispatch_sync(_queue,^{
+		@try {
     // Do nothing if session is already open
-    if(self.isSessionOpen == YES)
-      return YES;
-
+    if(self.isSessionOpen == YES) {
+      resumed = YES;
+			return;
+		}
+		
     if([self ll_isOptedIn] == false) {
       [self logMessage:@"Can't resume session because user is opted out."];
-      return NO;
-    }  
-
+      resumed = NO;
+			return;
+    }
+		
     // conditions for resuming previous session
     if(self.sessionHasBeenOpen &&
        (!self.sessionCloseTime ||
         [self.sessionCloseTime timeIntervalSinceNow]*-1 <= self.backgroundSessionTimeout)) {
-           // Note that we allow the session to be resumed even if the database size exceeds the
-           // maximum. This is because we don't want to create incomplete sessions. If the DB was large
-           // enough that the previous session could not be opened, there will be nothing to resume. But 
-           // if this session caused it to go over it is better to let it complete and stop the next one
-           // from being created.
-           dispatch_async(_queue, ^{
-               [self logMessage:@"Resume called - Resuming previous session."];
-               [self reopenPreviousSession];
-           });
-           
-           resumed = YES;
-    } else {
-        // otherwise open new session and upload
-        dispatch_async(_queue, ^{
-            [self logMessage:@"Resume called - Opening a new session."];
-            [self ll_open];
-        });
-        
-        resumed = NO;      
-    }
+				 // Note that we allow the session to be resumed even if the database size exceeds the
+				 // maximum. This is because we don't want to create incomplete sessions. If the DB was large
+				 // enough that the previous session could not be opened, there will be nothing to resume. But
+				 // if this session caused it to go over it is better to let it complete and stop the next one
+				 // from being created.
+					 [self logMessage:@"Resume called - Resuming previous session."];
+					 [self reopenPreviousSession];
+				 
+				 resumed = YES;
+			 } else {
+				 // otherwise open new session and upload
+					 [self logMessage:@"Resume called - Opening a new session."];
+					 [self ll_open];
+				 
+				 resumed = NO;
+			 }
     self.sessionCloseTime = nil;
-    return resumed;
+		} @catch (NSException *e) {}
+	});
+	return resumed;
 }
 
 - (void)close {
