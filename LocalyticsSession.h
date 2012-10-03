@@ -155,8 +155,10 @@
  is resumed.  If the time since closing is greater than BACKGROUND_SESSION_TIMEOUT, (15 seconds
  by default) a new session is created, and uploading is triggered.  Otherwise, the previous session 
  is reopened.
+ @return Returns whether the session was resumed or a new session was started. If the user has opted 
+ out of analytics then the return from this method is undefined.
 */
-- (void)resume;
+- (BOOL)resume;
 
 /*!
  @method close
